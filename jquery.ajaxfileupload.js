@@ -7,6 +7,9 @@
 //  - Files are sandboxed. Doesn't matter how many, or where they are, on the page.
 //  - Allows for extra parameters to be included with the file
 //  - onStart callback can cancel the upload by returning false
+//
+//  Modified by 50onRed to correct some browser-specific behavior when parsing
+//  response data. https://github.com/50onRed/jQuery.AjaxFileUpload.js
 */
 
 
@@ -26,17 +29,17 @@
 
         var uploading_file = false;
 
-        if ( options ) {
+        if ( options ) { 
           $.extend( settings, options );
         }
 
 
-        // 'this' is a jQuery collection of one or more (hopefully)
+        // 'this' is a jQuery collection of one or more (hopefully) 
         //  file elements, but doesn't check for this yet
         return this.each(function() {
           var $element = $(this);
 
-          // Skip elements that are already setup. May replace this
+          // Skip elements that are already setup. May replace this 
           //  with uninit() later, to allow updating that settings
           if($element.data('ajaxUploader-setup') === true) return;
 
@@ -57,8 +60,11 @@
             // do nothing
           } else
           {
-            settings.submit_button.click(function()
+            settings.submit_button.click(function(e)
             {
+              // Prevent non-AJAXy submit
+              e.preventDefault();
+              
               // only attempt to upload file if we're not uploading
               if (!uploading_file)
               {
@@ -78,10 +84,10 @@
               // Pass back to the user
               settings.onComplete.apply($element, [{status: false, message: 'The select file type is invalid. File must be ' + settings.valid_extensions.join(', ') + '.'}, settings.params]);
             } else
-            {
+            { 
               uploading_file = true;
 
-              // Creates the form, extra inputs and iframe used to
+              // Creates the form, extra inputs and iframe used to 
               //  submit / upload the file
               wrapElement($element);
 
@@ -101,11 +107,21 @@
           $element.data('ajaxUploader-setup', true);
 
           /*
-          // Internal handler that tries to parse the response
-          //  and clean up after ourselves.
+          // Internal handler that tries to parse the response 
+          //  and clean up after ourselves. 
           */
           var handleResponse = function(loadedFrame, element) {
-            var response, responseStr = settings.dataType == 'json' ? loadedFrame.contentWindow.document.body.innerText : loadedFrame.contentWindow.document.body.innerHTML;
+            var frameBody = loadedFrame.contentWindow.document.body, 
+              response,
+              responseStr;
+
+            if (settings.dataType === 'json') {
+              // textContent is firefox specific
+              responseStr = frameBody.innerText || frameBody.textContent;
+            } else {
+              responseStr = frameBody.innerHTML;
+            }
+
             try {
               //response = $.parseJSON($.trim(responseStr));
               response = JSON.parse(responseStr);
@@ -126,8 +142,8 @@
           /*
           // Wraps element in a <form> tag, and inserts hidden inputs for each
           //  key:value pair in settings.params so they can be sent along with
-          //  the upload. Then, creates an iframe that the whole thing is
-          //  uploaded through.
+          //  the upload. Then, creates an iframe that the whole thing is 
+          //  uploaded through. 
           */
           var wrapElement = function(element) {
             // Create an iframe to submit through, using a semi-unique ID
